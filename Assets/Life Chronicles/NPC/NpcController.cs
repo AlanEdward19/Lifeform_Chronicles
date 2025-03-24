@@ -332,7 +332,7 @@ public class NpcController : MonoBehaviour
 
             if (Vector3.Distance(transform.position, publicInteractableObject.transform.position) < 2f)
             {
-                publicInteractableObject.Interact(this, EInteractionType.Sleep);
+                publicInteractableObject.Interact(this, EInteractionType.Rest);
                 isPerformingAction = false;
             }
         }
@@ -481,7 +481,7 @@ public class NpcController : MonoBehaviour
         {
             HandleThirst();
         }
-        else if (energy < 20f)
+        else if (energy < 20f && CanSleep())
         {
             HandleEnergy();
         }

@@ -107,6 +107,7 @@ public class Building : MonoBehaviour
     {
         // Notificar sistemas relevantes
         WorldSimulationManager.Instance.RegisterBuilding(this);
+        buildingID = WorldSimulationManager.Instance.GetNextBuildingId();
         
         // Atualizar a economia
         EconomyManager.Instance.RegisterPropertyValue(buildingID, value);

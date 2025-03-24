@@ -67,6 +67,11 @@ public class WorldSimulationManager : MonoBehaviour
     #endregion
 
     #region Building
+    
+    public int GetNextBuildingId()
+    {
+        return allBuildings.Any() ? allBuildings.OrderBy(x => x.buildingID).Last().buildingID + 1 : 1;
+    }
 
     public void RegisterBuilding(Building building)
     {
