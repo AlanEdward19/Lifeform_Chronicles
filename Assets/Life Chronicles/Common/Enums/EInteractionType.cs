@@ -1,0 +1,19 @@
+﻿public enum EInteractionType
+{
+    Use,
+    Sleep,
+    Rest,
+    Eat,
+    Drink,
+    Cook,
+    Clean,
+    Watch,
+    Talk,
+    Work,
+    Study,
+    Play,
+    Exercise,
+    Shower,
+    UseBathroom,
+    Repair
+}

@@ -1,0 +1,21 @@
+﻿public enum EJobType
+{
+    Unemployed,
+    Merchant,
+    Waiter,
+    Nurse,
+    Doctor,
+    Police,
+    Farmer,
+    Guard,
+    Worker,
+    Teacher,
+    Principal,
+    Singer,
+    Mayor,
+    Lawyer,
+    Craftsman,
+    Criminal,
+    Superhero,
+    Villain
+}
