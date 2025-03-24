@@ -17,6 +17,7 @@ public class WorldSimulationManager : MonoBehaviour
     // Listas de todos os NPCs, edifícios e recursos
     public List<NpcController> allNPCs = new();
     public List<Building> allBuildings = new List<Building>();
+    public List<InteractableObject> publicInteractables = new List<InteractableObject>();
     
     // Eventos principais
     public event Action<int> OnNewDay;
@@ -92,11 +93,44 @@ public class WorldSimulationManager : MonoBehaviour
     }
     
     [CanBeNull]
-    public Building FindAvailableHome(float moneyAvailable)
+    public Building FindAvailableHome(float moneyAvailable, NpcController npcController)
     {
         var emptyHouses = allBuildings.Where(x => x.type == EBuildingType.House && x.employees.Count == 0).ToList();
         
-        return emptyHouses.FirstOrDefault(x => x.value <= moneyAvailable);
+        return emptyHouses
+            .OrderBy(x => Vector3.Distance(npcController.transform.position, x.transform.position))
+            .FirstOrDefault(x => x.value <= moneyAvailable);
+    }
+
+    #endregion
+
+    #region InteractableObjects
+
+    public void RegisterInteractableObject(InteractableObject interactable)
+    {
+        publicInteractables.Add(interactable);
+    }
+    
+    public InteractableObject GetInteractableObjectByNeed(ENeed need, NpcController npcController)
+    {
+        List<InteractableObject> interactableObjects = new();
+        var unusedObjects = publicInteractables
+            .Where(x => !x.beingInteracted);
+
+        foreach (var unusedObject in unusedObjects)
+        {
+            foreach (var possibleInteraction in unusedObject.possibleInteractions)
+            {
+                float value = unusedObject.GetEffectValue(possibleInteraction.Key, need);
+
+                if (value != 0)
+                    interactableObjects.Add(unusedObject);
+            }
+        }
+        
+        return interactableObjects
+            .OrderBy(x => Vector3.Distance(npcController.transform.position, x.transform.position))
+            .FirstOrDefault();
     }
 
     #endregion

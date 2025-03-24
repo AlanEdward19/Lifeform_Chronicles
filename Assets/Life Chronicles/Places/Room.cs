@@ -143,105 +143,81 @@ public class Room : MonoBehaviour
         switch (itemName)
         {
             case "Bed":
-                furniture.possibleInteractions = new EInteractionType[] { 
-                    EInteractionType.Sleep, 
-                    EInteractionType.Rest 
-                };
-                
                 // Efeito de dormir
                 NeedsEffect sleepEffect = new NeedsEffect {
                     energy = 50f,
                     fun = 5f
                 };
-                furniture.interactionEffects[EInteractionType.Sleep] = sleepEffect;
+                
+                furniture.possibleInteractions[EInteractionType.Sleep] = sleepEffect;
                 
                 // Efeito de descansar
                 NeedsEffect restEffect = new NeedsEffect {
                     energy = 10f,
                     fun = 2f
                 };
-                furniture.interactionEffects[EInteractionType.Rest] = restEffect;
+                
+                furniture.possibleInteractions[EInteractionType.Rest] = restEffect;
                 break;
                 
             case "Sofa":
-                furniture.possibleInteractions = new EInteractionType[] { 
-                    EInteractionType.Rest, 
-                    EInteractionType.Watch 
-                };
-                
                 // Efeito de descansar
                 NeedsEffect sofaRestEffect = new NeedsEffect {
                     energy = 5f,
                     fun = 5f
                 };
-                furniture.interactionEffects[EInteractionType.Rest] = sofaRestEffect;
+                furniture.possibleInteractions[EInteractionType.Rest] = sofaRestEffect;
                 
                 // Efeito de assistir (TV presumivelmente)
                 NeedsEffect watchEffect = new NeedsEffect {
                     fun = 15f,
                     social = 0f
                 };
-                furniture.interactionEffects[EInteractionType.Watch] = watchEffect;
+                furniture.possibleInteractions[EInteractionType.Watch] = watchEffect;
                 break;
                 
             case "Refrigerator":
-                furniture.possibleInteractions = new EInteractionType[] { 
-                    EInteractionType.Eat,
-                    EInteractionType.Drink
-                };
-                
                 // Efeito de comer
                 NeedsEffect eatEffect = new NeedsEffect {
                     hunger = 40f,
                     thirst = 5f
                 };
-                furniture.interactionEffects[EInteractionType.Eat] = eatEffect;
+                furniture.possibleInteractions[EInteractionType.Eat] = eatEffect;
                 
                 // Efeito de beber
                 NeedsEffect drinkEffect = new NeedsEffect {
                     thirst = 40f
                 };
-                furniture.interactionEffects[EInteractionType.Drink] = drinkEffect;
+                furniture.possibleInteractions[EInteractionType.Drink] = drinkEffect;
                 break;
                 
             case "Toilet":
-                furniture.possibleInteractions = new EInteractionType[] { 
-                    EInteractionType.UseBathroom 
-                };
-                
                 // Efeito de usar o banheiro
                 NeedsEffect bathroomEffect = new NeedsEffect {
                     bladder = 100f
                 };
-                furniture.interactionEffects[EInteractionType.UseBathroom] = bathroomEffect;
+                furniture.possibleInteractions[EInteractionType.UseBathroom] = bathroomEffect;
                 break;
                 
             case "Shower":
-                furniture.possibleInteractions = new EInteractionType[] { 
-                    EInteractionType.Shower 
-                };
-                
                 // Efeito de tomar banho
                 NeedsEffect showerEffect = new NeedsEffect {
                     hygiene = 100f,
                     fun = 5f
                 };
-                furniture.interactionEffects[EInteractionType.Shower] = showerEffect;
+                furniture.possibleInteractions[EInteractionType.Shower] = showerEffect;
                 break;
                 
             // Outros casos podem ser adicionados conforme necessário
             
             default:
                 // Interação genérica para móveis não especificados
-                furniture.possibleInteractions = new EInteractionType[] { 
-                    EInteractionType.Use 
-                };
                 
                 // Efeito genérico
                 NeedsEffect useEffect = new NeedsEffect {
                     fun = 2f
                 };
-                furniture.interactionEffects[EInteractionType.Use] = useEffect;
+                furniture.possibleInteractions[EInteractionType.Use] = useEffect;
                 break;
         }
     }

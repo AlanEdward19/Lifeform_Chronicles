@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 public class Building : MonoBehaviour
@@ -43,6 +44,31 @@ public class Building : MonoBehaviour
         }
     }
 
+    public InteractableObject FindObjectByNeed(ENeed need)
+    {
+        InteractableObject bestObjectForNeedAvailable = null;
+        float bestValue = 0f;
+        
+        var unusedObjects = interactables
+            .Where(x => !x.beingInteracted);
+
+        foreach (var unusedObject in unusedObjects)
+        {
+            foreach (var possibleInteraction in unusedObject.possibleInteractions)
+            {
+                float value = unusedObject.GetEffectValue(possibleInteraction.Key, need);
+                
+                if (value > bestValue)
+                {
+                    bestValue = value;
+                    bestObjectForNeedAvailable = unusedObject;
+                }
+            }
+        }
+        
+        return bestObjectForNeedAvailable;
+    }
+    
     private void Start()
     {
         if (isConstructed)

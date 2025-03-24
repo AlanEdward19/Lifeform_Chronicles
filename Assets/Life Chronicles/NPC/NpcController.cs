@@ -4,10 +4,12 @@ using System.Collections.Generic;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.AI;
+using Random = UnityEngine.Random;
 
 public class NpcController : MonoBehaviour
 {
     private NavMeshAgent navMeshAgent;
+    private Vector3 targetPosition = Vector3.zero;
 
     #region Identificação
 
@@ -32,7 +34,7 @@ public class NpcController : MonoBehaviour
     public List<int> childrenIDs = new List<int>();
 
     #endregion
-    
+
     #region Necessidades
 
     [SerializeField] private float hunger = 100f;
@@ -44,7 +46,7 @@ public class NpcController : MonoBehaviour
     [SerializeField] private float fun = 100f;
 
     #endregion
-    
+
     #region Atributos
 
     [SerializeField] private int strength = 10;
@@ -65,6 +67,7 @@ public class NpcController : MonoBehaviour
 
     #region Trabalho
 
+    private EJobType suitableJob;
     [SerializeField] private EJobType currentJob = EJobType.Unemployed;
     [SerializeField] private float money = 100f;
     [SerializeField] private int jobPerformance = 50; // 0-100
@@ -72,11 +75,11 @@ public class NpcController : MonoBehaviour
     #endregion
 
     #region GOAP
-    
+
     private bool isPerformingAction = false;
 
     #endregion
-    
+
     #region Memória
 
     public MemorySystem memorySystem { get; set; }
@@ -85,29 +88,73 @@ public class NpcController : MonoBehaviour
 
     #region Propriedades publicas
 
-    public int Age { get => age; set => age = value; }
-    public EGender Gender { get => gender; }
-    public int FatherID { get => fatherID; }
-    public int MotherID { get => motherID; }
-    public EJobType Job { get => currentJob; }
-    public int Strength { get => strength; }
-    public int Intelligence { get => intelligence; }
-    public int Wisdom { get => wisdom; }
-    public int Constitution { get => constitution; }
-    public int Dexterity { get => dexterity; }
-    public int Charisma { get => charisma; }
+    public int Age
+    {
+        get => age;
+        set => age = value;
+    }
+
+    public EGender Gender
+    {
+        get => gender;
+    }
+
+    public int FatherID
+    {
+        get => fatherID;
+    }
+
+    public int MotherID
+    {
+        get => motherID;
+    }
+
+    public EJobType Job
+    {
+        get => currentJob;
+    }
+
+    public int Strength
+    {
+        get => strength;
+    }
+
+    public int Intelligence
+    {
+        get => intelligence;
+    }
+
+    public int Wisdom
+    {
+        get => wisdom;
+    }
+
+    public int Constitution
+    {
+        get => constitution;
+    }
+
+    public int Dexterity
+    {
+        get => dexterity;
+    }
+
+    public int Charisma
+    {
+        get => charisma;
+    }
 
     #endregion
-    
+
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
         InitializeNPC();
         WorldSimulationManager.Instance.RegisterNPC(this);
-        
+
         // Inicializar sistema de memória
         memorySystem = GetComponent<MemorySystem>();
-        
+
         navMeshAgent = GetComponent<NavMeshAgent>();
 
         Building home = WorldSimulationManager.Instance.FindNpcHome(this);
@@ -117,7 +164,7 @@ public class NpcController : MonoBehaviour
             if (FatherID != -1)
             {
                 var father = WorldSimulationManager.Instance.GetNPCById(FatherID);
-                
+
                 if (father != null)
                     Home = father.Home;
             }
@@ -133,29 +180,30 @@ public class NpcController : MonoBehaviour
             Home = home;
     }
 
-    #region Ações
-
-    private IEnumerator MoveToCoroutine(Vector3 destination)
+    // Update is called once per frame
+    void Update()
     {
-        if (navMeshAgent != null)
-        {
-            navMeshAgent.SetDestination(destination);
-            navMeshAgent.isStopped = false;
+        if (targetPosition != Vector3.zero && Vector3.Distance(transform.position, targetPosition) < 2f)
+            targetPosition = Vector3.zero;
 
-            while (navMeshAgent.pathPending || navMeshAgent.remainingDistance > navMeshAgent.stoppingDistance)
-            {
-                yield return null;
-            }
+        // Atualizar necessidades ao longo do tempo
+        UpdateNeeds(Time.deltaTime);
 
-            navMeshAgent.isStopped = true;
-        }
+        DecideNewGoal();
     }
+
+    #region Ações
 
     private void MoveTo(Vector3 destination)
     {
-        StartCoroutine(MoveToCoroutine(destination));
+        if (navMeshAgent != null)
+        {
+            navMeshAgent.isStopped = false;
+            navMeshAgent.SetDestination(destination);
+            targetPosition = destination;
+        }
     }
-    
+
     public void StopMoving()
     {
         if (navMeshAgent != null)
@@ -163,44 +211,62 @@ public class NpcController : MonoBehaviour
             navMeshAgent.isStopped = true;
         }
     }
-    
+
     private void FellAsleep()
     {
         // Implementação para dormir
         Debug.Log("Fell Asleep");
+
+        ChangeNeed(ENeed.Energy, 30);
     }
-    
+
     private void PeeInPants()
     {
         // Implementação para urinar nas calças
         Debug.Log("Pee In Pants");
     }
-    
+
     private void LookForWork()
     {
-        EJobType job = JobSystem.FindSuitableJob(this);
+        Building? building = WorldSimulationManager.Instance.GetBuildingByJob(suitableJob);
 
-        Building? building = WorldSimulationManager.Instance.GetBuildingByJob(job);
-        
-        if (building != null)
+        if (building != null && (targetPosition == Vector3.zero || building.transform.position == targetPosition))
         {
             MoveTo(building.transform.position);
-            building.Hire(this, job);
+
+            if (Vector3.Distance(transform.position, building.transform.position) < 2f)
+            {
+                building.Hire(this, suitableJob);
+                isPerformingAction = false;
+            }
         }
     }
-    
+
+    private bool CanLookForWork()
+    {
+        Building? building = WorldSimulationManager.Instance.GetBuildingByJob(suitableJob);
+
+        return building != null;
+    }
+
     private void LookForHome()
     {
-        Building? building = WorldSimulationManager.Instance.FindAvailableHome(money);
-        
-        if (building != null)
+        Building? building = WorldSimulationManager.Instance.FindAvailableHome(money, this);
+
+        if (building != null && (targetPosition == Vector3.zero || building.transform.position == targetPosition))
         {
+            isPerformingAction = true;
             MoveTo(building.transform.position);
-            building.Hire(this, Job);
-            Home = building;
+
+            if (Vector3.Distance(transform.position, building.transform.position) < 2f)
+            {
+                building.Hire(this, Job);
+                Home = building;
+                isPerformingAction = false;
+            }
         }
     }
-    
+
     private void HandleHunger()
     {
         // Implementação para lidar com a fome
@@ -213,8 +279,66 @@ public class NpcController : MonoBehaviour
         Debug.Log("Handling Thirst");
     }
 
+    private bool CanSleep()
+    {
+        if (Home != null)
+        {
+            var furniture = Home.FindObjectByNeed(ENeed.Energy);
+
+            if (furniture != null)
+                return true;
+        }
+
+        var publicInteractableObject = WorldSimulationManager.Instance.GetInteractableObjectByNeed(ENeed.Energy, this);
+
+        if (publicInteractableObject != null)
+        {
+            return true;
+        }
+
+        return false;
+    }
+
     private void HandleEnergy()
     {
+        // Etapas: Procurar em casa, se não achar em casa procurar pousada,
+        // se não achar em pousada procurar móveis pertos, se não achar móveis próximos desistir
+
+        var publicInteractableObject = WorldSimulationManager.Instance.GetInteractableObjectByNeed(ENeed.Energy, this);
+        var furniture = Home?.FindObjectByNeed(ENeed.Energy);
+
+        #region Procurar em casa
+
+        if (Home != null && furniture != null)
+        {
+            MoveTo(furniture.transform.position);
+            isPerformingAction = true;
+
+            if (Vector3.Distance(transform.position, furniture.transform.position) < 2f)
+            {
+                furniture.Interact(this, EInteractionType.Sleep);
+                isPerformingAction = false;
+            }
+        }
+
+        #endregion
+
+        #region Moveis publicos
+
+        else if (publicInteractableObject != null)
+        {
+            MoveTo(publicInteractableObject.transform.position);
+            isPerformingAction = true;
+
+            if (Vector3.Distance(transform.position, publicInteractableObject.transform.position) < 2f)
+            {
+                publicInteractableObject.Interact(this, EInteractionType.Sleep);
+                isPerformingAction = false;
+            }
+        }
+
+        #endregion
+
         // Implementação para lidar com a energia
         Debug.Log("Handling Energy");
     }
@@ -242,28 +366,34 @@ public class NpcController : MonoBehaviour
         // Implementação para lidar com a diversão
         Debug.Log("Handling Fun");
     }
-    
+
     public void AssignJob(EJobType job)
     {
         currentJob = job;
     }
 
+    private void MoveAround()
+    {
+        if (targetPosition == Vector3.zero)
+        {
+            Vector3 randomDirection = Random.insideUnitSphere * 10f;
+            randomDirection += transform.position;
+
+            NavMeshHit hit;
+            if (NavMesh.SamplePosition(randomDirection, out hit, 10f, NavMesh.AllAreas))
+            {
+                MoveTo(hit.position);
+            }
+        }
+    }
+
     #endregion
 
-    // Update is called once per frame
-    void Update()
-    {
-        // Atualizar necessidades ao longo do tempo
-        UpdateNeeds(Time.deltaTime);
-        
-        DecideNewGoal();
-    }
-    
     private void InitializeNPC()
     {
         // Definir idade inicial e gênero
         gender = (EGender)UnityEngine.Random.Range(0, Enum.GetValues(typeof(EGender)).Length);
-        
+
         // Se não tem pais (primeiros NPCs), usar atributos aleatórios
         if (fatherID == -1 && motherID == -1)
         {
@@ -275,11 +405,11 @@ public class NpcController : MonoBehaviour
             dexterity = UnityEngine.Random.Range(8, 13);
             charisma = UnityEngine.Random.Range(8, 13);
         }
-        
+
         // Inicializar personalidade
         personality = new Personality();
         personality.GeneratePersonality();
-        
+
         // Inicializar estado como adulto jovem se for primeira geração
         if (fatherID == -1 && motherID == -1)
         {
@@ -290,14 +420,10 @@ public class NpcController : MonoBehaviour
         {
             age = 0;
         }
+
+        suitableJob = JobSystem.FindSuitableJob(this);
     }
-    
-    private void RegisterAvailableActions()
-    {
-        // Adicionar todas as ações que este NPC pode realizar
-        // Exemplos: Comer, Dormir, Trabalhar, Socializar, Construir, etc.
-    }
-    
+
     private void UpdateNeeds(float deltaTime)
     {
         // Diminuir todas as necessidades com o tempo
@@ -308,7 +434,7 @@ public class NpcController : MonoBehaviour
         hygiene -= 0.4f * deltaTime;
         bladder -= 0.6f * deltaTime;
         fun -= 0.4f * deltaTime;
-        
+
         // Limitar valores entre 0 e 100
         hunger = Mathf.Clamp(hunger, 0f, 100f);
         thirst = Mathf.Clamp(thirst, 0f, 100f);
@@ -323,7 +449,7 @@ public class NpcController : MonoBehaviour
             StopMoving();
             Die(EDeathCause.Starvation);
         }
-            
+
         else if (thirst == 0)
         {
             StopMoving();
@@ -340,51 +466,53 @@ public class NpcController : MonoBehaviour
             PeeInPants();
         }
     }
-    
+
     private void DecideNewGoal()
     {
-        if (!isPerformingAction)
+        if (Home == null)
         {
-            if (hunger < 20f)
-            {
-                HandleHunger();
-            }
-            else if (thirst < 20f)
-            {
-                HandleThirst();
-            }
-            else if (energy < 20f)
-            {
-                HandleEnergy();
-            }
-            else if (bladder < 20f)
-            {
-                HandleBladder();
-            }
-            else if (hygiene < 20f)
-            {
-                HandleHygiene();
-            }
-            else if (social < 20f)
-            {
-                HandleSocial();
-            }
-            else if (fun < 20f)
-            {
-                HandleFun();
-            }
-            else if (Home == null)
-            {
-                LookForHome();
-            }
-            else if (Job == EJobType.Unemployed)
-            {
-                LookForWork();
-            }
+            LookForHome();
+        }
+        else if (hunger < 20f)
+        {
+            HandleHunger();
+        }
+        else if (thirst < 20f)
+        {
+            HandleThirst();
+        }
+        else if (energy < 20f)
+        {
+            HandleEnergy();
+        }
+        else if (bladder < 20f)
+        {
+            HandleBladder();
+        }
+        else if (hygiene < 20f)
+        {
+            HandleHygiene();
+        }
+        else if (social < 20f)
+        {
+            HandleSocial();
+        }
+        else if (fun < 20f)
+        {
+            HandleFun();
+        }
+        else if (Job == EJobType.Unemployed && CanLookForWork())
+        {
+            LookForWork();
+        }
+        //Se for horario de trabalho vai trabalhar
+        else
+        {
+            MoveAround();
         }
     }
-    
-    // Método para reprodução
+
+// Método para reprodução
     public bool CanReproduce()
     {
         // Verificar se é mulher e está em idade reprodutiva (entre 18 e 45 anos)
@@ -423,73 +551,73 @@ public class NpcController : MonoBehaviour
                 break;
         }
     }
-    
-    // Método para criar um filho
+
+// Método para criar um filho
     public NpcController HaveChild(NpcController otherParent)
     {
         if (!CanReproduce())
             return null;
-        
+
         // Determinar qual é o pai e qual é a mãe
         NpcController mother = this;
         NpcController father = otherParent;
-        
+
         if (gender != EGender.Female)
         {
             mother = otherParent;
             father = this;
-            
+
             if (mother.gender != EGender.Female)
                 return null; // Ambos não são mulheres, não podem ter filhos
         }
-        
+
         // Criar um novo NPC
         GameObject childObject = new GameObject("NPC Child");
         NpcController child = childObject.AddComponent<NpcController>();
-        
+
         // Configurar IDs dos pais
         int childID = WorldSimulationManager.Instance.GetNextid();
         child.id = childID;
         child.fatherID = father.id;
         child.motherID = mother.id;
-        
+
         // Adicionar o ID do filho à lista de filhos dos pais
         mother.childrenIDs.Add(childID);
         father.childrenIDs.Add(childID);
-        
+
         // Gerar atributos usando algoritmo genético
         GeneticAttributeCalculator.CalculateChildAttributes(father, mother, child);
-        
+
         // Gerar nome (pode ser implementado depois)
         child.name = "Child of " + father.name + " and " + mother.name;
-        
+
         // Criar memória do nascimento
-        Memory birthMemory =MemoryFactory.CreateChildbirthMemory(mother.id, father.id, child.id, child.name);
-        
+        Memory birthMemory = MemoryFactory.CreateChildbirthMemory(mother.id, father.id, child.id, child.name);
+
         // Adicionar a memória aos pais
         mother.memorySystem.AddMemory(birthMemory);
         father.memorySystem.AddMemory(birthMemory);
-        
+
         WorldSimulationManager.Instance.RegisterNPC(child);
-        
+
         return child;
     }
-    
-    // Métodos para relacionamentos
+
+// Métodos para relacionamentos
     public void UpdateRelationship(int otherid, float delta)
     {
         if (!relationships.ContainsKey(otherid))
             relationships[otherid] = 50f; // Valor neutro inicial
-            
+
         relationships[otherid] = Mathf.Clamp(relationships[otherid] + delta, 0f, 100f);
     }
-    
-    // Métodos para profissão
+
+// Métodos para profissão
     public void GoToWork()
     {
         // Lógica de trabalho
     }
-    
+
     public void GetPaid()
     {
         money += JobDatabase.GetSalary(currentJob, jobPerformance);
@@ -499,12 +627,12 @@ public class NpcController : MonoBehaviour
     {
         money += amount;
     }
-    
-    // Método para envelhecer o NPC
+
+// Método para envelhecer o NPC
     public void Age1Year()
     {
         age++;
-        
+
         // Aplicar efeitos da idade
         if (age > 60)
         {
@@ -513,12 +641,13 @@ public class NpcController : MonoBehaviour
             {
                 strength = Mathf.Max(strength - 1, 1);
             }
+
             if (UnityEngine.Random.value < 0.1f)
             {
                 constitution = Mathf.Max(constitution - 1, 1);
             }
         }
-        
+
         // Verificar morte por velhice (chance aumenta após 70 anos)
         if (age > 70)
         {
@@ -529,26 +658,26 @@ public class NpcController : MonoBehaviour
             }
         }
     }
-    
-    // Método para morte do NPC
+
+// Método para morte do NPC
     public void Die(EDeathCause cause)
     {
         // Criar memória para todos os NPCs relacionados
         Memory deathMemory = MemoryFactory.CreateDeathMemory(id, cause, new List<int>());
-        
+
         // Notificar familiares
         foreach (NpcController npc in WorldSimulationManager.Instance.allNPCs)
         {
-            if (npc.fatherID == id || npc.motherID == id || 
+            if (npc.fatherID == id || npc.motherID == id ||
                 childrenIDs.Contains(npc.id) || npc.id == fatherID || npc.id == motherID)
             {
                 npc.memorySystem.AddMemory(deathMemory);
                 // Afetar relacionamentos e estado emocional
             }
         }
-        
+
         // Processar herança, propriedades, etc.
-        
+
         // Remover do mundo
         WorldSimulationManager.Instance.allNPCs.Remove(this);
         Destroy(gameObject);

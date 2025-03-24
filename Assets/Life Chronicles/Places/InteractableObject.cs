@@ -4,14 +4,14 @@ using UnityEngine;
 
 public class InteractableObject : MonoBehaviour
 {
+    public bool beingInteracted = false;
     public string objectName;
-    public EInteractionType[] possibleInteractions;
     public float value = 100f; // Valor monetário do objeto
     public float durability = 100f; // 0-100, representa quanto o objeto está desgastado
     public float maxDurability = 100f;
     
     // Efeitos nas necessidades para cada interação
-    public Dictionary<EInteractionType, NeedsEffect> interactionEffects = new Dictionary<EInteractionType, NeedsEffect>();
+    public Dictionary<EInteractionType, NeedsEffect> possibleInteractions = new Dictionary<EInteractionType, NeedsEffect>();
     
     // Tempo necessário para cada interação (em segundos simulados)
     public Dictionary<EInteractionType, float> interactionDurations = new Dictionary<EInteractionType, float>();
@@ -20,7 +20,7 @@ public class InteractableObject : MonoBehaviour
     public void Interact(NpcController npc, EInteractionType EInteractionType)
     {
         // Verificar se a interação é possível
-        if (Array.IndexOf(possibleInteractions, EInteractionType) == -1)
+        if (!possibleInteractions.ContainsKey(EInteractionType))
         {
             Debug.LogWarning($"NPC {npc.name} tentou {EInteractionType} com {objectName}, mas essa interação não é possível.");
             return;
@@ -36,9 +36,10 @@ public class InteractableObject : MonoBehaviour
         }
         
         // Aplicar efeitos nas necessidades do NPC
-        if (interactionEffects.ContainsKey(EInteractionType))
+        if (possibleInteractions.ContainsKey(EInteractionType))
         {
-            NeedsEffect effect = interactionEffects[EInteractionType];
+            beingInteracted = true;
+            NeedsEffect effect = possibleInteractions[EInteractionType];
             
             // Diminuir a durabilidade com o uso
             float usageFactor = GetUsageFactor(EInteractionType);
@@ -51,6 +52,7 @@ public class InteractableObject : MonoBehaviour
             
             // Animar o NPC (em uma implementação real)
             AnimateInteraction(npc, EInteractionType);
+            beingInteracted = false;
         }
     }
     
@@ -99,13 +101,39 @@ public class InteractableObject : MonoBehaviour
     private void ApplyNeedsEffect(NpcController npc, NeedsEffect effect, float multiplier)
     {
         // Aplicar efeitos nas necessidades do NPC
-        if (effect.hunger != 0) npc.ChangeNeed(ENeed.Hunger, effect.hunger * multiplier);
-        if (effect.thirst != 0) npc.ChangeNeed(ENeed.Thirst, effect.thirst * multiplier);
-        if (effect.energy != 0) npc.ChangeNeed(ENeed.Energy, effect.energy * multiplier);
-        if (effect.social != 0) npc.ChangeNeed(ENeed.Social, effect.social * multiplier);
-        if (effect.hygiene != 0) npc.ChangeNeed(ENeed.Hygiene, effect.hygiene * multiplier);
-        if (effect.bladder != 0) npc.ChangeNeed(ENeed.Bladder, effect.bladder * multiplier);
-        if (effect.fun != 0) npc.ChangeNeed(ENeed.Fun, effect.fun * multiplier);
+        if (effect.hunger != 0) 
+            npc.ChangeNeed(ENeed.Hunger, effect.hunger * multiplier);
+        if (effect.thirst != 0) 
+            npc.ChangeNeed(ENeed.Thirst, effect.thirst * multiplier);
+        if (effect.energy != 0) 
+            npc.ChangeNeed(ENeed.Energy, effect.energy * multiplier);
+        if (effect.social != 0) 
+            npc.ChangeNeed(ENeed.Social, effect.social * multiplier);
+        if (effect.hygiene != 0) 
+            npc.ChangeNeed(ENeed.Hygiene, effect.hygiene * multiplier);
+        if (effect.bladder != 0) 
+            npc.ChangeNeed(ENeed.Bladder, effect.bladder * multiplier);
+        if (effect.fun != 0) npc.
+            ChangeNeed(ENeed.Fun, effect.fun * multiplier);
+    }
+    
+    public float GetEffectValue(EInteractionType EInteractionType, ENeed need)
+    {
+        if (possibleInteractions.ContainsKey(EInteractionType))
+        {
+            NeedsEffect effect = possibleInteractions[EInteractionType];
+            switch (need)
+            {
+                case ENeed.Hunger: return effect.hunger;
+                case ENeed.Thirst: return effect.thirst;
+                case ENeed.Energy: return effect.energy;
+                case ENeed.Social: return effect.social;
+                case ENeed.Hygiene: return effect.hygiene;
+                case ENeed.Bladder: return effect.bladder;
+                case ENeed.Fun: return effect.fun;
+            }
+        }
+        return 0f;
     }
     
     private void AnimateInteraction(NpcController npc, EInteractionType EInteractionType)
@@ -122,5 +150,11 @@ public class InteractableObject : MonoBehaviour
     {
         float durabilityFactor = durability / maxDurability;
         return value * durabilityFactor;
+    }
+
+    protected void ConfigureFurnitureEffects(Dictionary<EInteractionType, NeedsEffect> interactions, Dictionary<EInteractionType, float> interactionDurations)
+    {
+        possibleInteractions = interactions;
+        this.interactionDurations = interactionDurations;
     }
 }
