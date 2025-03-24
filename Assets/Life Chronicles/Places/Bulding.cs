@@ -14,6 +14,9 @@ public class Building : MonoBehaviour
     public int maxEmployees;
     public List<Room> rooms = new();
     public List<InteractableObject> interactables = new();
+    public List<ENeed> suitableNeeds = new(); // Necessidades que este edifício pode atender
+    public float needModifier = 1.0f; // Modificador de satisfação de necessidades
+    public float costForNeeds = 0f; // Custo para atender necessidades
     
     public DateTime OpenTime;
     public DateTime CloseTime;
@@ -34,6 +37,12 @@ public class Building : MonoBehaviour
     // Sistema de reparo
     private bool needsRepair = false;
     private NpcController repairNPC;
+    
+    public void RemoveInteractable(InteractableObject interactable)
+    {
+        if (interactables.Contains(interactable))
+            interactables.Remove(interactable);
+    }
 
     public void Hire(NpcController npc, EJobType jobType)
     {
@@ -126,11 +135,25 @@ public class Building : MonoBehaviour
         health -= amount;
         health = Mathf.Max(0f, health);
         
-        // Se a saúde chegar a 0, o edifício fica inutilizável até ser reparado
-        if (health <= 0f)
-        {
+        
+        if (health == 0f)
+            Destroy();
+        
+        // Se a saúde chegar a 10, o edifício fica inutilizável até ser reparado
+        if (health <= 10f)
             DisableBuilding();
+    }
+
+    public void Destroy()
+    {
+        foreach (var item in interactables)
+        {
+            Destroy(item.gameObject);
         }
+        
+        WorldSimulationManager.Instance.RemoveBuilding(this);
+        
+        Destroy(gameObject);
     }
     
     private void DisableBuilding()

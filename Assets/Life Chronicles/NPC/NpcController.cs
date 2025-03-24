@@ -226,6 +226,8 @@ public class NpcController : MonoBehaviour
         Debug.Log("Pee In Pants");
     }
 
+    #region Work
+
     private void LookForWork()
     {
         Building? building = WorldSimulationManager.Instance.GetBuildingByJob(suitableJob);
@@ -249,6 +251,17 @@ public class NpcController : MonoBehaviour
         return building != null;
     }
 
+    #endregion
+
+    #region Home
+
+    private bool CanLookForHome()
+    {
+        Building? building = WorldSimulationManager.Instance.FindAvailableHome(money, this);
+
+        return building != null;
+    }
+
     private void LookForHome()
     {
         Building? building = WorldSimulationManager.Instance.FindAvailableHome(money, this);
@@ -267,63 +280,82 @@ public class NpcController : MonoBehaviour
         }
     }
 
-    private void HandleHunger()
-    {
-        // Implementação para lidar com a fome
-        Debug.Log("Handling Hunger");
-    }
+    #endregion
 
-    private void HandleThirst()
-    {
-        // Implementação para lidar com a sede
-        Debug.Log("Handling Thirst");
-    }
-
-    private bool CanSleep()
+    private bool CanExecuteNeed(ENeed need)
     {
         if (Home != null)
         {
-            var furniture = Home.FindObjectByNeed(ENeed.Energy);
+            var item = Home.FindObjectByNeed(need);
 
-            if (furniture != null)
+            if (item != null)
                 return true;
         }
 
-        var publicInteractableObject = WorldSimulationManager.Instance.GetInteractableObjectByNeed(ENeed.Energy, this);
+        var publicInteractableObject = WorldSimulationManager.Instance.GetInteractableObjectByNeed(need, this);
 
         if (publicInteractableObject != null)
-        {
             return true;
-        }
+        
+        var establishment = WorldSimulationManager.Instance.GetBuildingByNeed(need, money);
+        
+        if (establishment != null)
+            return true;
 
         return false;
     }
 
-    private void HandleEnergy()
+    private void HandleNeed(ENeed need, EInteractionType interactionTypeHome, EInteractionType interactionTypeItem)
     {
-        // Etapas: Procurar em casa, se não achar em casa procurar pousada,
-        // se não achar em pousada procurar móveis pertos, se não achar móveis próximos desistir
-
-        var publicInteractableObject = WorldSimulationManager.Instance.GetInteractableObjectByNeed(ENeed.Energy, this);
-        var furniture = Home?.FindObjectByNeed(ENeed.Energy);
+        // Etapas: Procurar em casa, se não achar em casa procurar em predios,
+        // se não achar em predios procurar itens pertos, se não achar móveis próximos desistir
+        
+        var publicInteractableObject = WorldSimulationManager.Instance.GetInteractableObjectByNeed(need, this);
+        var item = Home?.FindObjectByNeed(need);
+        var establishment = WorldSimulationManager.Instance.GetBuildingByNeed(need, money);
+        bool establishmentNearThanItem = false;
+        
+        if(establishment != null && publicInteractableObject == null)
+            establishmentNearThanItem = true;
+        
+        else if(establishment != null && publicInteractableObject != null)
+            establishmentNearThanItem = Vector3.Distance(transform.position, establishment.transform.position) <
+                Vector3.Distance(transform.position, publicInteractableObject.transform.position);
 
         #region Procurar em casa
 
-        if (Home != null && furniture != null)
+        if (Home != null && item != null)
         {
-            MoveTo(furniture.transform.position);
+            MoveTo(item.transform.position);
             isPerformingAction = true;
 
-            if (Vector3.Distance(transform.position, furniture.transform.position) < 2f)
+            if (Vector3.Distance(transform.position, item.transform.position) < 2f)
             {
-                furniture.Interact(this, EInteractionType.Sleep);
+                item.Interact(this, interactionTypeHome);
+                isPerformingAction = false;
+            }
+        }
+        
+        #endregion
+
+        #region Procurar em estabelecimentos
+
+        else if (establishment != null && establishmentNearThanItem)
+        {
+            MoveTo(establishment.transform.position);
+            isPerformingAction = true;
+
+            if (Vector3.Distance(transform.position, establishment.transform.position) < 2f)
+            {
+                ChangeNeed(need, establishment.needModifier);
+                RemoveMoney(establishment.costForNeeds);
                 isPerformingAction = false;
             }
         }
 
         #endregion
-
-        #region Moveis publicos
+        
+        #region Itens publicos
 
         else if (publicInteractableObject != null)
         {
@@ -332,27 +364,12 @@ public class NpcController : MonoBehaviour
 
             if (Vector3.Distance(transform.position, publicInteractableObject.transform.position) < 2f)
             {
-                publicInteractableObject.Interact(this, EInteractionType.Rest);
+                publicInteractableObject.Interact(this, interactionTypeItem);
                 isPerformingAction = false;
             }
         }
 
         #endregion
-
-        // Implementação para lidar com a energia
-        Debug.Log("Handling Energy");
-    }
-
-    private void HandleBladder()
-    {
-        // Implementação para lidar com a bexiga
-        Debug.Log("Handling Bladder");
-    }
-
-    private void HandleHygiene()
-    {
-        // Implementação para lidar com a higiene
-        Debug.Log("Handling Hygiene");
     }
 
     private void HandleSocial()
@@ -469,35 +486,35 @@ public class NpcController : MonoBehaviour
 
     private void DecideNewGoal()
     {
-        if (Home == null)
+        if (hunger < 20f && CanExecuteNeed(ENeed.Hunger))
+        {
+            HandleNeed(ENeed.Hunger, EInteractionType.Eat, EInteractionType.Eat);
+        }
+        else if (thirst < 20f && CanExecuteNeed(ENeed.Thirst))
+        {
+            HandleNeed(ENeed.Thirst, EInteractionType.Drink, EInteractionType.Drink);
+        }
+        else if (energy < 20f && CanExecuteNeed(ENeed.Energy))
+        {
+            HandleNeed(ENeed.Thirst, EInteractionType.Sleep, EInteractionType.Rest);
+        }
+        else if (Home == null && CanLookForHome())
         {
             LookForHome();
         }
-        else if (hunger < 20f)
+        else if (bladder < 20f && CanExecuteNeed(ENeed.Bladder))
         {
-            HandleHunger();
+            HandleNeed(ENeed.Bladder, EInteractionType.UseBathroom, EInteractionType.UseBathroom);
         }
-        else if (thirst < 20f)
+        else if (hygiene < 20f && CanExecuteNeed(ENeed.Hygiene))
         {
-            HandleThirst();
+            HandleNeed(ENeed.Hygiene, EInteractionType.Shower, EInteractionType.Shower);
         }
-        else if (energy < 20f && CanSleep())
-        {
-            HandleEnergy();
-        }
-        else if (bladder < 20f)
-        {
-            HandleBladder();
-        }
-        else if (hygiene < 20f)
-        {
-            HandleHygiene();
-        }
-        else if (social < 20f)
+        else if (social < 20f && CanExecuteNeed(ENeed.Social))
         {
             HandleSocial();
         }
-        else if (fun < 20f)
+        else if (fun < 20f && CanExecuteNeed(ENeed.Fun))
         {
             HandleFun();
         }
@@ -626,6 +643,11 @@ public class NpcController : MonoBehaviour
     public void AddMoney(float amount)
     {
         money += amount;
+    }
+
+    public void RemoveMoney(float amount)
+    {
+        money -= amount;
     }
 
 // Método para envelhecer o NPC

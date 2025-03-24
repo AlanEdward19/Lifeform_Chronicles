@@ -11,5 +11,6 @@
     School,
     Entertainment,
     Government,
-    SecretBase
+    SecretBase,
+    Hotel
 }

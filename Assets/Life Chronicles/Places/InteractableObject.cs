@@ -17,7 +17,7 @@ public class InteractableObject : MonoBehaviour
     public Dictionary<EInteractionType, float> interactionDurations = new Dictionary<EInteractionType, float>();
     
     // Método para realizar interação
-    public void Interact(NpcController npc, EInteractionType EInteractionType)
+    public virtual void Interact(NpcController npc, EInteractionType EInteractionType)
     {
         // Verificar se a interação é possível
         if (!possibleInteractions.ContainsKey(EInteractionType))

@@ -73,6 +73,20 @@ public class WorldSimulationManager : MonoBehaviour
         return allBuildings.Any() ? allBuildings.OrderBy(x => x.buildingID).Last().buildingID + 1 : 1;
     }
 
+    public void RemoveBuilding(Building building)
+    {
+        if(allBuildings.Contains(building))
+            allBuildings.Remove(building);
+    }
+    
+    public Building GetBuildingByNeed(ENeed need, float money)
+    {
+        return allBuildings
+            .Where(x => x.suitableNeeds.Contains(need) && x.value <= money)
+            .OrderBy(x => Vector3.Distance(Vector3.zero, x.transform.position))
+            .FirstOrDefault();
+    }
+
     public void RegisterBuilding(Building building)
     {
         allBuildings.Add(building);
@@ -114,6 +128,12 @@ public class WorldSimulationManager : MonoBehaviour
     public void RegisterInteractableObject(InteractableObject interactable)
     {
         publicInteractables.Add(interactable);
+    }
+
+    public void RemoveInteractableObject(InteractableObject interactable)
+    {
+        if(publicInteractables.Contains(interactable))
+            publicInteractables.Remove(interactable);
     }
     
     public InteractableObject GetInteractableObjectByNeed(ENeed need, NpcController npcController)
